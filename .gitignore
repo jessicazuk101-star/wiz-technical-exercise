@@ -22,3 +22,18 @@ Makefile
 deploy
 test
 tmp
+# Secrets and credentials
+.env
+.env.*
+*.pem
+*secret*
+credentials
+
+# AWS/local files
+.aws/
+
+# macOS
+.DS_Store
+
+# Downloaded/generated policy
+iam_policy.json
