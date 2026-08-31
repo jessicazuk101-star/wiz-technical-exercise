@@ -37,3 +37,9 @@ credentials
 
 # Downloaded/generated policy
 iam_policy.json
+aws-config-bucket-policy.json
+github-actions-app-policy.json
+github-actions-iac-policy.json
+github-main-ruleset.json
+github-oidc-trust.json
+s3-backup-policy.json
