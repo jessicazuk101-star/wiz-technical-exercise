@@ -1,0 +1,54 @@
+name: Scan and Deploy Infrastructure
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - 'infra/**'
+      - '.github/workflows/iac-pipeline.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  id-token: write
+
+env:
+  AWS_REGION: us-east-2
+  STACK_NAME: wiz-security-controls
+
+jobs:
+  scan-and-deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Scan IaC with Checkov
+        uses: bridgecrewio/checkov-action@master
+        with:
+          directory: infra
+          framework: cloudformation
+          soft_fail: true
+
+      - name: Configure AWS credentials with OIDC
+        uses: aws-actions/configure-aws-credentials@v6.2.3
+        with:
+          role-to-assume: arn:aws:iam::368082409303:role/WizGitHubActionsRole
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Validate CloudFormation template
+        run: |
+          aws cloudformation validate-template \
+            --template-body file://infra/security-controls.yaml \
+            --region "$AWS_REGION"
+
+      - name: Deploy CloudFormation stack
+        run: |
+          aws cloudformation deploy \
+            --template-file infra/security-controls.yaml \
+            --stack-name "$STACK_NAME" \
+            --region "$AWS_REGION" \
+            --no-fail-on-empty-changeset
+

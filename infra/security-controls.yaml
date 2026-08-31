@@ -1,0 +1,74 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: Wiz Technical Exercise - Cloud Native Security Controls
+
+Parameters:
+  EKSClusterName:
+    Type: String
+    Default: wiz-assessment-eks
+
+Resources:
+
+  SecurityAuditLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: /wiz/security/audit
+      RetentionInDays: 30
+
+  SecurityEventsLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: /wiz/security/events
+      RetentionInDays: 30
+
+  SecurityGroupChangeDetectionRule:
+    Type: AWS::Events::Rule
+    Properties:
+      Name: wiz-security-group-change-detection
+      Description: Detect changes to EC2 security group rules
+      State: ENABLED
+      EventPattern:
+        source:
+          - aws.ec2
+        detail-type:
+          - AWS API Call via CloudTrail
+        detail:
+          eventSource:
+            - ec2.amazonaws.com
+          eventName:
+            - AuthorizeSecurityGroupIngress
+            - RevokeSecurityGroupIngress
+            - AuthorizeSecurityGroupEgress
+            - RevokeSecurityGroupEgress
+      Targets:
+        - Arn: !GetAtt SecurityEventsLogGroup.Arn
+          Id: SecurityEventsLogTarget
+
+  EventBridgeLogPermission:
+    Type: AWS::Logs::ResourcePolicy
+    Properties:
+      PolicyName: wiz-eventbridge-log-policy
+      PolicyDocument: !Sub |
+        {
+          "Version": "2012-10-17",
+          "Statement": [
+            {
+              "Sid": "EventBridgeToCloudWatchLogs",
+              "Effect": "Allow",
+              "Principal": {
+                "Service": "events.amazonaws.com"
+              },
+              "Action": [
+                "logs:CreateLogStream",
+                "logs:PutLogEvents"
+              ],
+              "Resource": "${SecurityEventsLogGroup.Arn}:*"
+            }
+          ]
+        }
+
+Outputs:
+  SecurityEventsLogGroupName:
+    Value: !Ref SecurityEventsLogGroup
+
+  DetectionRuleName:
+    Value: !Ref SecurityGroupChangeDetectionRule
